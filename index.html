@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EPUB 橫排轉直排工具</title>
-    <!-- 引入 JSZip 庫，用於在瀏覽器前端解壓和壓縮 zip/epub -->
+    <!-- 引入 JSZip 庫 -->
     <script src="https://cloudflare.com"></script>
     <style>
         :root {
@@ -38,7 +38,6 @@
         h1 { font-size: 1.5rem; margin-bottom: 10px; }
         p { color: #666; font-size: 0.9rem; margin-bottom: 25px; }
         
-        /* 手機友好的上傳按鈕 */
         .file-input-wrapper {
             position: relative;
             margin-bottom: 20px;
@@ -91,7 +90,6 @@
 </div>
 
 <script>
-// 標點符號轉換對應表
 const punctMap = {
     '「': '﹃', '」': '﹄',
     '『': '﹁', '』': '﹂',
@@ -100,22 +98,22 @@ const punctMap = {
     '《': '︽', '》': '︾',
     '〈': '︿', '〉': '﹀',
     '〔': '︹', '〕': '︺',
-    '—': '︱',  // 破折號
-    '…': '︙'   // 刪節號
+    '—': '︱',  
+    '…': '︙'   
 };
 
 function replacePunctuation(text) {
     let result = text;
     for (const [horiz, vert] of Object.entries(punctMap)) {
-        // 使用全域替換
         result = result.split(horiz).join(vert);
     }
     return result;
 }
 
 document.getElementById('fileInput').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    // 【修正點】精確獲取單一檔案物件
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0]; 
 
     const statusDiv = document.getElementById('status');
     const uploadBtn = document.getElementById('uploadBtn');
@@ -126,32 +124,25 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
 
     try {
         const zip = new JSZip();
-        // 1. 載入並解壓 EPUB
+        // 讀取上傳的電子書
         const loadedZip = await zip.loadAsync(file);
         
-        let opfUpdated = false;
-        let cssUpdated = false;
-
-        // 定義要注入的 CSS 直排樣式
         const verticalCss = `\n\n/* Added by Converter */\nhtml {\n  writing-mode: vertical-rl;\n  -webkit-writing-mode: vertical-rl;\n  -epub-writing-mode: vertical-rl;\n}\n`;
-
-        // 2. 遍歷檔案進行修改
         const filePromises = [];
         
         loadedZip.forEach((relativePath, zipEntry) => {
-            // 處理 OPF 檔案 (修改翻頁方向)
+            // 處理 OPF 
             if (relativePath.endsWith('.opf')) {
                 const promise = zipEntry.async('string').then(content => {
                     if (!content.includes('page-progression-direction')) {
                         content = content.replace(/<spine([^>]*)>/, '<spine$1 page-progression-direction="rtl">');
                         zip.file(relativePath, content);
-                        opfUpdated = true;
                     }
                 });
                 filePromises.push(promise);
             }
             
-            // 處理內文檔案 (修正標點符號)
+            // 處理內文
             if (relativePath.match(/\.(html|xhtml|htm)$/i)) {
                 const promise = zipEntry.async('string').then(content => {
                     const updatedContent = replacePunctuation(content);
@@ -160,27 +151,21 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
                 filePromises.push(promise);
             }
 
-            // 處理 CSS 檔案 (注入直排樣式)
-            if (relativePath.endswith('.css')) {
+            // 處理 CSS
+            if (relativePath.endsWith('.css')) {
                 const promise = zipEntry.async('string').then(content => {
                     const updatedContent = content + verticalCss;
                     zip.file(relativePath, updatedContent);
-                    cssUpdated = true;
                 });
                 filePromises.push(promise);
             }
         });
 
-        // 等待所有內部檔案修改完成
         await Promise.all(filePromises);
-
         statusDiv.innerText = "📦 正在打包成直排 EPUB...";
 
-        // 3. 重新打包（確保 mimetype 在第一個且不壓縮）
-        // 雖然 JSZip 對順序要求沒那麼嚴格，但為了高相容性，我們先建立新 zip
+        // 重新打包確保相容性
         const newZip = new JSZip();
-        
-        // 先放 mimetype
         if (zip.file("mimetype")) {
             const mimeContent = await zip.file("mimetype").async("string");
             newZip.file("mimetype", mimeContent, {compression: "STORE"});
@@ -188,22 +173,19 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
             newZip.file("mimetype", "application/epub+zip", {compression: "STORE"});
         }
 
-        // 再放其他檔案
         for (const [path, zipEntry] of Object.entries(zip.files)) {
             if (path === "mimetype") continue;
             const contentBlob = await zipEntry.async("blob");
             newZip.file(path, contentBlob);
         }
 
-        // 4. 產生下載檔案
         const generatedBlob = await newZip.generateAsync({type: "blob", mimeType: "application/epub+zip"});
         
-        // 5. 觸發手機/網頁下載
+        // 觸發下載
         const downloadUrl = URL.createObjectURL(generatedBlob);
         const a = document.createElement('a');
-        
-        // 檔名加上 [直排]
         const originalName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        
         a.href = downloadUrl;
         a.download = `${originalName}_[直排].epub`;
         document.body.appendChild(a);
@@ -216,10 +198,10 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
     } catch (error) {
         console.error(error);
         statusDiv.className = 'error';
-        statusDiv.innerText = "❌ 轉換失敗，可能檔案格式有誤。";
+        statusDiv.innerText = `❌ 錯誤: ${error.message || '檔案解析失敗'}`;
     } finally {
         uploadBtn.disabled = false;
-        document.getElementById('fileInput').value = ''; // 清空選擇
+        document.getElementById('fileInput').value = ''; 
     }
 });
 </script>

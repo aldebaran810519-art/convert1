@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EPUB 直排與封面修改工具</title>
+    <!-- 引入穩定版解壓庫 -->
+    <script src="https://cloudflare.com" crossorigin="anonymous"></script>
+    <style>
+        :root {
+            --primary-color: #007aff;
+            --success-color: #34c759;
+            --bg-color: #f2f2f7;
+            --card-bg: #ffffff;
+            --text-color: #1c1c1e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 30px 24px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+        p.subtitle { font-size: 14px; color: #8e8e93; margin-bottom: 24px; }
+        
+        input[type="file"] { display: none; }
+        
+        .upload-box {
+            border: 2px dashed #c7c7cc;
+            border-radius: 14px;
+            padding: 24px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 16px;
+        }
+        .upload-box:active { background: #f2f2f7; transform: scale(0.98); }
+        .upload-box .icon { font-size: 30px; margin-bottom: 8px; display: block; }
+        .upload-box .text { font-size: 15px; font-weight: 600; color: var(--primary-color); white-space: pre-line; }
+        
+        .btn {
+            background: var(--success-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.2);
+            margin-top: 10px;
+        }
+        .btn:disabled { background: #d1d1d6; box-shadow: none; }
+        
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #636366;
+            line-height: 1.6;
+            background: #f8f8fa;
+            padding: 12px;
+            border-radius: 10px;
+            display: none;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>📖 EPUB 直排與封面修改</h1>
+    <p class="subtitle">更換新封面 + 轉為直書右翻格式</p>
+    
+    <!-- 1. 上傳書檔 -->
+    <label for="epub-file">
+        <div class="upload-box">
+            <span class="icon">📚</span>
+            <span class="text" id="epub-hint">第一步：點擊上傳 EPUB 書檔</span>
+        </div>
+        <input type="file" id="epub-file" accept=".epub">
+    </label>
+
+    <!-- 2. 上傳新封面 (選填) -->
+    <label for="cover-file">
+        <div class="upload-box">
+            <span class="icon">🖼️</span>
+            <span class="text" id="cover-hint">第二步：點擊上傳新封面圖片 (選填)</span>
+        </div>
+        <input type="file" id="cover-file" accept="image/jpeg, image/png">
+    </label>
+    
+    <button class="btn" id="convert-btn">⚡ 開始轉換並下載</button>
+    <div id="status"></div>
+</div>
+
+<script>
+const epubInput = document.getElementById('epub-file');
+const coverInput = document.getElementById('cover-file');
+const epubHint = document.getElementById('epub-hint');
+const coverHint = document.getElementById('cover-hint');
+const convertBtn = document.getElementById('convert-btn');
+const statusDiv = document.getElementById('status');
+
+let selectedEpub = null;
+let selectedCover = null;
+
+// 正確綁定書檔選取事件
+epubInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        selectedEpub = e.target.files[0]; // 精確抓取單一檔案
+        epubHint.innerText = `📄 書檔已選取：\n${selectedEpub.name}`;
+        statusDiv.style.display = 'none';
+    }
+});
+
+// 正確綁定封面選取事件
+coverInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        selectedCover = e.target.files[0]; // 精確抓取單一檔案
+        coverHint.innerText = `🖼️ 封面已選取：\n${selectedCover.name}`;
+    }
+});
+
+convertBtn.addEventListener('click', async () => {
+    if (!selectedEpub) {
+        alert('請先上傳 EPUB 書檔！');
+        return;
+    }
+    
+    if (typeof JSZip === 'undefined') {
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = '❌ 錯誤：解壓元件載入失敗，請確認手機網路，或嘗試更換瀏覽器。';
+        return;
+    }
+
+    convertBtn.disabled = true;
+    statusDiv.style.display = 'block';
+    statusDiv.innerHTML = '';
+    
+    log('🔄 正在讀取書籍結構...');
+    
+    try {
+        const zip = new JSZip();
+        const loadedZip = await zip.loadAsync(selectedEpub);
+        let opfPath = null;
+        let opfContent = '';
+
+        const verticalStyle = `
+            <style type="text/css">
+                html, body {
+                    writing-mode: vertical-rl !important;
+                    -webkit-writing-mode: vertical-rl !important;
+                    epub-writing-mode: vertical-rl !important;
+                }
+                svg, img, body > div {
+                    max-width: 100vw !important;
+                    max-height: 100vh !important;
+                    width: auto !important;
+                    height: auto !important;
+                    object-fit: contain !important;
+                }
+            </style>
+        `;
+
+        for (let path in loadedZip.files) {
+            if (path.endsWith('.opf')) {
+                opfPath = path;
+                opfContent = await loadedZip.files[path].async('text');
+            }
+        }
+
+        for (let path in loadedZip.files) {
+            const file = loadedZip.files[path];
+            
+            if (path === opfPath) {
+                if (opfContent.includes('<spine')) {
+                    if (opfContent.includes('page-progression-direction')) {
+                        opfContent = opfContent.replace(/page-progression-direction="[^"]*"/g, 'page-progression-direction="rtl"');
+                    } else {
+                        opfContent = opfContent.replace('<spine', '<spine page-progression-direction="rtl"');
+                    }
+                }
+                zip.file(path, opfContent);
+                continue;
+            }
+            
+            // 覆蓋舊封面檔案
+            if (selectedCover && (path.toLowerCase().includes('cover') || path.toLowerCase().includes('thumb')) && (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png'))) {
+                log(`🖼️ 正在更新封面檔案: ${path}`);
+                const coverArrayBuffer = await selectedCover.arrayBuffer();
+                zip.file(path, coverArrayBuffer);
+                continue;
+            }
+
+            if (path.endsWith('.html') || path.endsWith('.xhtml')) {
+                let content = await file.async('text');
+                if (content.includes('</head>')) {
+                    content = content.replace('</head>', verticalStyle + '</head>');
+                } else if (content.includes('<body')) {
+                    content = content.replace('<body', verticalStyle + '<body');
+                }
+                content = content.replace(/「/g, '﹃').replace(/」/g, '﹄').replace(/『/g, '﹃').replace(/』/g, '﹄');
+                zip.file(path, content);
+            } else {
+                if (!selectedCover || !path.toLowerCase().includes('cover')) {
+                    const rawData = await file.async('arraybuffer');
+                    zip.file(path, rawData);
+                }
+            }
+        }
+        
+        log('📦 重新打包專屬直排電子書...');
+        const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip' });
+        
+        log('🎉 轉換成功！開始下載...');
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = selectedEpub.name.replace('.epub', '_直排新封面.epub');
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }, 100);
+        
+    } catch (err) {
+        log(`❌ 錯誤：${err.message}`);
+    } finally {
+        convertBtn.disabled = false;
+    }
+});
+
+function log(text) {
+    statusDiv.innerHTML += `<div>${text}</div>`;
+}
+</script>
+</body>
+</html>

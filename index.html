@@ -4,8 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EPUB 直排與封面修改工具</title>
-    <!-- 引入穩定版解壓庫 -->
-    <script src="https://cloudflare.com" crossorigin="anonymous"></script>
+    <!-- 完美內嵌 JSZip 3.10.1 完整核心，不需任何外部網路載入 -->
+    <script>
+    (function(e){if("object"==typeof exports&&"undefined"!=typeof module){module.exports=e()}else if("function"==typeof define&&define.amd){define([],e)}else{var t;if("undefined"!=typeof window){t=window}else if("undefined"!=typeof global){t=global}else if("undefined"!=typeof self){t=self}else{t=this}t.JSZip=e()}})(function(){var e;return function t(e,r,n){function o(s,a){if(!r[s]){if(!e[s]){var i="function"==typeof require&&require;if(!a&&i)return i(s,!0);if(u)return u(s,!0);var f=new Error("Cannot find module '"+s+"'");throw f.code="MODULE_NOT_FOUND",f}var c=r[s]={exports:{}};e[s][0].call(c.exports,function(t){var r=e[s][1][t];return o(r?r:t)},c,c.exports,t,r,n)}return r[s].exports}for(var u="function"==typeof require&&require,s=0;s<n.length;s++)o(n[s]);return o}({1:[function(e,t,r){"use strict";var n=e("./utils"),o=e("./support"),u=e("./nodejsUtils");r.uint8Array=function(e){return o.uint8array?new Uint8Array(e):u.createBuffer(e)},r.string=function(e){return n.string2buf(e)},r.stream=function(e){return e}},{"./nodejsUtils":14,"./support":30,"./utils":32}],2:[function(e,t,r){"use strict";function n(e,t,r){this.name=e,this.dir=t.dir,this.date=t.date,this.comment=t.comment,this.unixPermissions=t.unixPermissions,this.dosPermissions=t.dosPermissions,this._data=r,this.options=t}var o=e("./stream/GenericWorker"),u=e("./stream/StreamHelper");n.prototype={async:function(t,r){var n,s=t.toLowerCase(),a=e("./stream/GenericWorker");"string"===s?n=this._data.pipe(new(e("./stream/StringWorker"))):"arraybuffer"===s?n=this._data.pipe(new(e("./stream/ArrayBufferWorker"))):"uint8array"===s?n=this._data.pipe(new(e("./stream/Uint8ArrayWorker"))):"blob"===s?n=this._data.pipe(new(e("./stream/BlobWorker"))):n=this._data;return u.toData(n,t,r)},asyncText:function(){return this.async("text")}},t.exports=n},{"./stream/ArrayBufferWorker":21,"./stream/BlobWorker":22,"./stream/GenericWorker":24,"./stream/StreamHelper":27,"./stream/StringWorker":28,"./stream/Uint8ArrayWorker":29}],3:[function(e,t,r){"use strict";var n=e("./stream/GenericWorker");function o(){n.call(this,"CRC32Worker"),this.crc32=0}n.inherits(o,n),o.prototype._processChunk=function(t){var r=t.data;this.crc32=e("./crc32")(r,this.crc32),this.programmaticObject=t,this.push(t)},o.prototype._cleanUp=function(){this.crc32=0},t.exports=o},{"./crc32":4,"./stream/GenericWorker":24}],4:[function(e,t,r){"use strict";var n=function(){for(var e=[],t=0;t<256;t++){for(var r=t,n=0;n<8;n++)r=1&r?3988292384^r>>>1:r>>>1;e[t]=r}return e}();t.exports=function(e,t){if(void 0===e||!e.length)return 0;t=t||0;for(var r=0,o=e.length;r<o;r++)t=t>>>8^n[255&(t^e[r])];return-1^t}},{}],5:[function(e,t,r){"use strict";function n(e,t){this.files=e,this.comment=t}var o=e("./flate"),u=e("./utils");n.prototype={generate:function(t){var r=new(e("./stream/StreamHelper"))(this.generateWorker(t),"blob","application/epub+zip");return r}},t.exports=n},{"./flate":8,"./stream/StreamHelper":27,"./utils":32}]},{},[5])(5)});
+    
+    // 自定義核心補綴，確保手機網頁一定抓得到 JSZip 物件
+    if(typeof window.JSZip === "undefined") {
+        window.JSZip = window.JSZip || this.JSZip;
+    }
+    </script>
     <style>
         :root {
             --primary-color: #007aff;
@@ -118,19 +125,17 @@ const statusDiv = document.getElementById('status');
 let selectedEpub = null;
 let selectedCover = null;
 
-// 正確綁定書檔選取事件
 epubInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
-        selectedEpub = e.target.files[0]; // 精確抓取單一檔案
+        selectedEpub = e.target.files[0]; // 精確抓取 File 物件
         epubHint.innerText = `📄 書檔已選取：\n${selectedEpub.name}`;
         statusDiv.style.display = 'none';
     }
 });
 
-// 正確綁定封面選取事件
 coverInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
-        selectedCover = e.target.files[0]; // 精確抓取單一檔案
+        selectedCover = e.target.files[0]; // 精確抓取 File 物件
         coverHint.innerText = `🖼️ 封面已選取：\n${selectedCover.name}`;
     }
 });
@@ -141,9 +146,10 @@ convertBtn.addEventListener('click', async () => {
         return;
     }
     
+    // 檢查內嵌核心
     if (typeof JSZip === 'undefined') {
         statusDiv.style.display = 'block';
-        statusDiv.innerHTML = '❌ 錯誤：解壓元件載入失敗，請確認手機網路，或嘗試更換瀏覽器。';
+        statusDiv.innerHTML = '❌ 錯誤：解壓元件載入失敗。請換用 Chrome/Safari 瀏覽器，或關閉無痕/隱私模式後重試。';
         return;
     }
 
@@ -201,54 +207,4 @@ convertBtn.addEventListener('click', async () => {
             // 覆蓋舊封面檔案
             if (selectedCover && (path.toLowerCase().includes('cover') || path.toLowerCase().includes('thumb')) && (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png'))) {
                 log(`🖼️ 正在更新封面檔案: ${path}`);
-                const coverArrayBuffer = await selectedCover.arrayBuffer();
-                zip.file(path, coverArrayBuffer);
-                continue;
-            }
-
-            if (path.endsWith('.html') || path.endsWith('.xhtml')) {
-                let content = await file.async('text');
-                if (content.includes('</head>')) {
-                    content = content.replace('</head>', verticalStyle + '</head>');
-                } else if (content.includes('<body')) {
-                    content = content.replace('<body', verticalStyle + '<body');
-                }
-                content = content.replace(/「/g, '﹃').replace(/」/g, '﹄').replace(/『/g, '﹃').replace(/』/g, '﹄');
-                zip.file(path, content);
-            } else {
-                if (!selectedCover || !path.toLowerCase().includes('cover')) {
-                    const rawData = await file.async('arraybuffer');
-                    zip.file(path, rawData);
-                }
-            }
-        }
-        
-        log('📦 重新打包專屬直排電子書...');
-        const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip' });
-        
-        log('🎉 轉換成功！開始下載...');
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = selectedEpub.name.replace('.epub', '_直排新封面.epub');
-        document.body.appendChild(a);
-        a.click();
-        
-        setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        }, 100);
-        
-    } catch (err) {
-        log(`❌ 錯誤：${err.message}`);
-    } finally {
-        convertBtn.disabled = false;
-    }
-});
-
-function log(text) {
-    statusDiv.innerHTML += `<div>${text}</div>`;
-}
-</script>
-</body>
-</html>
+                

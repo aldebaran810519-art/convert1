@@ -2,252 +2,227 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB 直排與封面修改工具</title>
-    <!-- 引入官方穩定版解壓元件 -->
-    <script src="https://cloudflare.com" crossorigin="anonymous"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPUB 橫排轉直排工具</title>
+    <!-- 引入 JSZip 庫，用於在瀏覽器前端解壓和壓縮 zip/epub -->
+    <script src="https://cloudflare.com"></script>
     <style>
         :root {
             --primary-color: #007aff;
-            --success-color: #34c759;
-            --bg-color: #f2f2f7;
+            --bg-color: #f5f5f7;
             --card-bg: #ffffff;
-            --text-color: #1c1c1e;
+            --text-color: #333333;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            margin: 0;
             padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 90vh;
         }
-        .card {
+        .container {
             background: var(--card-bg);
+            padding: 30px;
             border-radius: 20px;
-            padding: 30px 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
             width: 100%;
-            max-width: 450px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            max-width: 400px;
             text-align: center;
+            box-sizing: border-box;
         }
-        h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-        p.subtitle { font-size: 14px; color: #8e8e93; margin-bottom: 24px; }
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        p { color: #666; font-size: 0.9rem; margin-bottom: 25px; }
         
-        input[type="file"] { display: none; }
-        
-        .upload-box {
-            border: 2px dashed #c7c7cc;
-            border-radius: 14px;
-            padding: 24px 20px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-bottom: 16px;
+        /* 手機友好的上傳按鈕 */
+        .file-input-wrapper {
+            position: relative;
+            margin-bottom: 20px;
         }
-        .upload-box:active { background: #f2f2f7; transform: scale(0.98); }
-        .upload-box .icon { font-size: 30px; margin-bottom: 8px; display: block; }
-        .upload-box .text { font-size: 15px; font-weight: 600; color: var(--primary-color); white-space: pre-line; word-break: break-all; }
-        
         .btn {
-            background: var(--success-color);
+            background-color: var(--primary-color);
             color: white;
-            border: none;
+            padding: 14px 28px;
             border-radius: 12px;
-            padding: 16px;
-            width: 100%;
-            font-size: 16px;
+            font-size: 1rem;
             font-weight: 600;
+            border: none;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.2);
-            margin-top: 10px;
+            width: 100%;
+            transition: background 0.2s;
+            box-sizing: border-box;
         }
-        .btn:disabled { background: #d1d1d6; box-shadow: none; }
+        .btn:disabled { background-color: #bcccf6; cursor: not-allowed; }
+        
+        #fileInput {
+            position: absolute;
+            left: 0; top: 0; opacity: 0;
+            width: 100%; height: 100%;
+            cursor: pointer;
+        }
         
         #status {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #636366;
-            line-height: 1.6;
-            background: #f8f8fa;
-            padding: 12px;
-            border-radius: 10px;
-            display: none;
-            text-align: left;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #888;
+            word-break: break-all;
+            min-height: 40px;
         }
+        .success { color: #34c759 !important; font-weight: bold; }
+        .error { color: #ff3b30 !important; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h1>📖 EPUB 直排與封面修改</h1>
-    <p class="subtitle">更換新封面 + 轉為直書右翻格式</p>
+<div class="container">
+    <h1>📚 EPUB 橫轉直工具</h1>
+    <p>手機點擊下方按鈕上傳 EPUB，將自動轉換為直排（直書、右翻）並修正標點符號。</p>
     
-    <!-- 1. 上傳書檔 -->
-    <label for="epub-file">
-        <div class="upload-box">
-            <span class="icon">📚</span>
-            <span class="text" id="epub-hint">第一步：點擊上傳 EPUB 書檔</span>
-        </div>
-        <input type="file" id="epub-file" accept=".epub">
-    </label>
+    <div class="file-input-wrapper">
+        <button class="btn" id="uploadBtn">📱 選擇 EPUB 檔案</button>
+        <input type="file" id="fileInput" accept=".epub">
+    </div>
 
-    <!-- 2. 上傳新封面 (選填) -->
-    <label for="cover-file">
-        <div class="upload-box">
-            <span class="icon">🖼️</span>
-            <span class="text" id="cover-hint">第二步：點擊上傳新封面圖片 (選填)</span>
-        </div>
-        <input type="file" id="cover-file" accept="image/jpeg, image/png">
-    </label>
-    
-    <button class="btn" id="convert-btn">⚡ 開始轉換並下載</button>
-    <div id="status"></div>
+    <div id="status">準備就緒，請上傳檔案</div>
 </div>
 
 <script>
-const epubInput = document.getElementById('epub-file');
-const coverInput = document.getElementById('cover-file');
-const epubHint = document.getElementById('epub-hint');
-const coverHint = document.getElementById('cover-hint');
-const convertBtn = document.getElementById('convert-btn');
-const statusDiv = document.getElementById('status');
+// 標點符號轉換對應表
+const punctMap = {
+    '「': '﹃', '」': '﹄',
+    '『': '﹁', '』': '﹂',
+    '（': '︵', '）': '︶',
+    '【': '︻', '】': '︼',
+    '《': '︽', '》': '︾',
+    '〈': '︿', '〉': '﹀',
+    '〔': '︹', '〕': '︺',
+    '—': '︱',  // 破折號
+    '…': '︙'   // 刪節號
+};
 
-let selectedEpubFile = null;
-let selectedCoverFile = null;
-
-// 完全修正：手動精確讀取單一檔案物件
-epubInput.addEventListener('change', function(e) {
-    if (e.target.files && e.target.files.length > 0) {
-        selectedEpubFile = e.target.files[0]; 
-        epubHint.innerText = `📄 書檔已選取：\n${selectedEpubFile.name}`;
-        statusDiv.style.display = 'none';
+function replacePunctuation(text) {
+    let result = text;
+    for (const [horiz, vert] of Object.entries(punctMap)) {
+        // 使用全域替換
+        result = result.split(horiz).join(vert);
     }
-});
+    return result;
+}
 
-coverInput.addEventListener('change', function(e) {
-    if (e.target.files && e.target.files.length > 0) {
-        selectedCoverFile = e.target.files[0]; 
-        coverHint.innerText = `🖼️ 封面已選取：\n${selectedCoverFile.name}`;
-    }
-});
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-convertBtn.addEventListener('click', async () => {
-    if (!selectedEpubFile) {
-        alert('請先選取 EPUB 書檔！');
-        return;
-    }
+    const statusDiv = document.getElementById('status');
+    const uploadBtn = document.getElementById('uploadBtn');
     
-    if (typeof JSZip === 'undefined') {
-        statusDiv.style.display = 'block';
-        statusDiv.innerHTML = '❌ 錯誤：解壓元件載入失敗。請確認手機網路連結，或關閉無痕與阻擋器後重試。';
-        return;
-    }
+    statusDiv.className = '';
+    statusDiv.innerText = "⏳ 正在讀取並解析電子書...";
+    uploadBtn.disabled = true;
 
-    convertBtn.disabled = true;
-    statusDiv.style.display = 'block';
-    statusDiv.innerHTML = '';
-    
-    log('🔄 正在讀取書籍結構...');
-    
     try {
         const zip = new JSZip();
-        const loadedZip = await zip.loadAsync(selectedEpubFile);
-        let opfPath = null;
-        let opfContent = '';
+        // 1. 載入並解壓 EPUB
+        const loadedZip = await zip.loadAsync(file);
+        
+        let opfUpdated = false;
+        let cssUpdated = false;
 
-        const verticalStyle = `
-            <style type="text/css">
-                html, body {
-                    writing-mode: vertical-rl !important;
-                    -webkit-writing-mode: vertical-rl !important;
-                    epub-writing-mode: vertical-rl !important;
-                }
-                svg, img, body > div {
-                    max-width: 100vw !important;
-                    max-height: 100vh !important;
-                    width: auto !important;
-                    height: auto !important;
-                    object-fit: contain !important;
-                }
-            </style>
-        `;
+        // 定義要注入的 CSS 直排樣式
+        const verticalCss = `\n\n/* Added by Converter */\nhtml {\n  writing-mode: vertical-rl;\n  -webkit-writing-mode: vertical-rl;\n  -epub-writing-mode: vertical-rl;\n}\n`;
 
-        for (let path in loadedZip.files) {
-            if (path.endsWith('.opf')) {
-                opfPath = path;
-                opfContent = await loadedZip.files[path].async('text');
-            }
-        }
-
-        for (let path in loadedZip.files) {
-            const file = loadedZip.files[path];
-            
-            if (path === opfPath) {
-                if (opfContent.includes('<spine')) {
-                    if (opfContent.includes('page-progression-direction')) {
-                        opfContent = opfContent.replace(/page-progression-direction="[^"]*"/g, 'page-progression-direction="rtl"');
-                    } else {
-                        opfContent = opfContent.replace('<spine', '<spine page-progression-direction="rtl"');
+        // 2. 遍歷檔案進行修改
+        const filePromises = [];
+        
+        loadedZip.forEach((relativePath, zipEntry) => {
+            // 處理 OPF 檔案 (修改翻頁方向)
+            if (relativePath.endsWith('.opf')) {
+                const promise = zipEntry.async('string').then(content => {
+                    if (!content.includes('page-progression-direction')) {
+                        content = content.replace(/<spine([^>]*)>/, '<spine$1 page-progression-direction="rtl">');
+                        zip.file(relativePath, content);
+                        opfUpdated = true;
                     }
-                }
-                zip.file(path, opfContent);
-                continue;
+                });
+                filePromises.push(promise);
             }
             
-            // 替換舊封面檔案
-            if (selectedCoverFile && (path.toLowerCase().includes('cover') || path.toLowerCase().includes('thumb')) && (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png'))) {
-                log(`🖼️ 正在更新封面檔案: ${path}`);
-                const coverArrayBuffer = await selectedCoverFile.arrayBuffer();
-                zip.file(path, coverArrayBuffer);
-                continue;
+            // 處理內文檔案 (修正標點符號)
+            if (relativePath.match(/\.(html|xhtml|htm)$/i)) {
+                const promise = zipEntry.async('string').then(content => {
+                    const updatedContent = replacePunctuation(content);
+                    zip.file(relativePath, updatedContent);
+                });
+                filePromises.push(promise);
             }
 
-            if (path.endsWith('.html') || path.endsWith('.xhtml')) {
-                let content = await file.async('text');
-                if (content.includes('</head>')) {
-                    content = content.replace('head>', 'head>' + verticalStyle);
-                } else if (content.includes('<body')) {
-                    content = content.replace('<body', verticalStyle + '<body');
-                }
-                content = content.replace(/「/g, '﹃').replace(/」/g, '﹄').replace(/『/g, '﹃').replace(/』/g, '﹄');
-                zip.file(path, content);
-            } else {
-                if (!selectedCoverFile || !path.toLowerCase().includes('cover')) {
-                    const rawData = await file.async('arraybuffer');
-                    zip.file(path, rawData);
-                }
+            // 處理 CSS 檔案 (注入直排樣式)
+            if (relativePath.endswith('.css')) {
+                const promise = zipEntry.async('string').then(content => {
+                    const updatedContent = content + verticalCss;
+                    zip.file(relativePath, updatedContent);
+                    cssUpdated = true;
+                });
+                filePromises.push(promise);
             }
+        });
+
+        // 等待所有內部檔案修改完成
+        await Promise.all(filePromises);
+
+        statusDiv.innerText = "📦 正在打包成直排 EPUB...";
+
+        // 3. 重新打包（確保 mimetype 在第一個且不壓縮）
+        // 雖然 JSZip 對順序要求沒那麼嚴格，但為了高相容性，我們先建立新 zip
+        const newZip = new JSZip();
+        
+        // 先放 mimetype
+        if (zip.file("mimetype")) {
+            const mimeContent = await zip.file("mimetype").async("string");
+            newZip.file("mimetype", mimeContent, {compression: "STORE"});
+        } else {
+            newZip.file("mimetype", "application/epub+zip", {compression: "STORE"});
         }
+
+        // 再放其他檔案
+        for (const [path, zipEntry] of Object.entries(zip.files)) {
+            if (path === "mimetype") continue;
+            const contentBlob = await zipEntry.async("blob");
+            newZip.file(path, contentBlob);
+        }
+
+        // 4. 產生下載檔案
+        const generatedBlob = await newZip.generateAsync({type: "blob", mimeType: "application/epub+zip"});
         
-        log('📦 重新打包專屬直排電子書...');
-        const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip' });
-        
-        log('🎉 轉換成功！開始下載...');
-        const url = window.URL.createObjectURL(blob);
+        // 5. 觸發手機/網頁下載
+        const downloadUrl = URL.createObjectURL(generatedBlob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = selectedEpubFile.name.replace('.epub', '_直排新封面.epub');
+        
+        // 檔名加上 [直排]
+        const originalName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        a.href = downloadUrl;
+        a.download = `${originalName}_[直排].epub`;
         document.body.appendChild(a);
         a.click();
-        
-        setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        }, 300);
-        
-    } catch (err) {
-        log(`❌ 錯誤：${err.message}`);
+        document.body.removeChild(a);
+
+        statusDiv.className = 'success';
+        statusDiv.innerText = "🎉 轉換成功！已自動觸發下載。";
+
+    } catch (error) {
+        console.error(error);
+        statusDiv.className = 'error';
+        statusDiv.innerText = "❌ 轉換失敗，可能檔案格式有誤。";
     } finally {
-        convertBtn.disabled = false;
+        uploadBtn.disabled = false;
+        document.getElementById('fileInput').value = ''; // 清空選擇
     }
 });
-
-function log(text) {
-    statusDiv.innerHTML += `<div>${text}</div>`;
-}
 </script>
+
 </body>
 </html>

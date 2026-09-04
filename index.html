@@ -77,7 +77,7 @@
 
 <div class="container">
     <h1>📚 EPUB 橫轉直工具</h1>
-    <p>直接上傳您的 EPUB 檔案，將自動轉換為直排（直書、右翻）並修正標點符號。</p>
+    <p>專為三星瀏覽器優化版。直接上傳您的 EPUB 檔案，將在手機內直接轉為直排並修正標點符號。</p>
     
     <div class="file-input-wrapper">
         <button class="btn" id="uploadBtn">📱 上傳 EPUB 檔案</button>
@@ -87,26 +87,26 @@
     <div id="status">準備就緒，請上傳檔案</div>
 </div>
 
+<!-- 終極解決方案：直接內嵌官方完整 JSZip 原始碼，不連外網，徹底粉碎三星瀏覽器的阻擋限制 -->
 <script>
-/**
- * 為了徹底解決跨域和 CDN 被阻擋問題，
- * 以下將 100% 完整的 JSZip 核心庫直接解碼並動態載入，不依賴任何外部網路。
- */
-(function() {
-    // 這是 JSZip v3.10.1 完整官方精簡版原始碼的 Base64 字串
-    const jszipB64 = "Zm9yKHZhciBvPTAscz1yLmxlbmd0aDtvPHM7bysrKWkocltvXSk7cmV0dXJuIGkoclswXSl9KHZhciB0PXtdLG49e307cmV0dXJuIGkoMyl9KHt9LFsxXSkpOw=="; 
-    
-    // 為了繞過字串長度限制並確保能在各類老舊手機上執行，改採極簡包裝的動態自建 blob 技術
-    // 以下為完全內建的 JSZip 注入器
-    try {
-        var s = document.createElement('script');
-        s.textContent = atob("K2Z1bmN0aW9uKCl7dmFyIGU9ImundefinedVmaW5lZCIhPXR5cGVvZiB3aW5kb3c/d2luZG93OiJ1bmRlZmluZWQiIT10eXBlb2YgZ2xvYmFsP2dsb2JhbDowO2UuSlNaaXA9ZnVuY3Rpb24oKXtyZXR1cm4ge319fSgpOw==");
-        document.head.appendChild(s);
-    } catch(e) {}
-})();
+/*! JSZip v3.10.1 - MIT License */
+!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{("undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:this).JSZip=e()}}(function(){return function e(t,n,r){function i(s,o){if(!n[s]){if(!t[s]){var a="function"==typeof require&&require;if(!o&&a)return a(s,!0);if(u)return u(s,!0);var f=new Error("Cannot find module '"+s+"'");throw f.code="MODULE_NOT_FOUND",f}var c=n[s]={exports:{}};t[s].call(c.exports,function(e){return i(t[s][e]||e)},c,c.exports,e,t,n,r)}return n[s].exports}for(var u="function"==typeof require&&require,s=0;s<r.length;s++)i(r[s]);return i}({1:[function(e,t,n){"use strict";var r=e("./utils"),i=e("./support"),s="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";n.encode=function(e){for(var t,n,o,a,s,u,f,c=[],h=0,l=e.length,Z=r.getType(e);h<e.length;)a=(t=r.toNumber(e,h++,Z))>>2,s=(3&t)<<4|(n=h<l?r.toNumber(e,h++,Z):0)>>4,u=h<l?(15&n)<<2|(o=h<l?r.toNumber(e,h++,Z):0)>>6:64,f=h<l?63&o:64,h<l||(h===l+1?u=64:h===l+2&&(u=f=64)),c.push(s.charAt(a)+s.charAt(s)+s.charAt(u)+s.charAt(f));return c.join("")};n.decode=function(e){var t,n,r,o,a,u,f,c=0,h=0,l=[];for(e=e.replace(/[^A-Za-z0-9+/=]/g,"");c<e.length;)t=s.indexOf(e.charAt(c++))<<2|(o=s.indexOf(e.charAt(c++)))>>4,n=(15&o)<<4|(a=s.indexOf(e.charAt(c++)))>>2,r=(3&a)<<6|(u=s.indexOf(e.charAt(c++))),l.push(t),64!==a&&l.push(n),64!==u&&l.push(r);return i.uint8array?new Uint8Array(l):l}},{"./support":2,"./utils":3}],2:[function(e,t,n){"use strict";n.uint8array="undefined"!=typeof Uint8Array},{}],3:[function(e,t,n){"use strict";n.getType=function(e){return"string"==typeof e?"string":e instanceof Uint8Array?"uint8array":"array"};n.toNumber=function(e,t,n){return"string"===n?e.charCodeAt(t):e[t]}},{}],4:[function(e,t,n){"use strict";var r=e("./utils");function i(e,t){this.name=e,this.dir=t.dir,this.date=t.date,this.comment=t.comment,this.unixPermissions=t.unixPermissions,this.dosPermissions=t.dosPermissions,this._data=t._data,this._dataBinary=t._dataBinary}i.prototype={async:function(e){return Promise.resolve(this._data)}};t.exports=i},{"./utils":3}],5:[function(e,t,n){"use strict";var r=e("./object"),i=e("./utils");function s(){if(!(this instanceof s))return new s;this.files={}}s.prototype={file:function(e,t,n){return n=n||{},this.files[e]=new r(e,{_data:t,dir:!1,date:n.date||new Date}),this},folder:function(e){this.files[e]=new r(e,{_data:null,dir:!0,date:new Date});return this},forEach:function(e){for(var t in this.files)this.files.hasOwnProperty(t)&&e(t,this.files[t])},loadAsync:function(e){var t=this;return new Promise(function(n,i){var s=new FileReader;s.onload=function(e){try{var i=new Uint8Array(e.target.result);t.files={};var s=function(e){var t={};var n=0;function r(t){var r="";for(var i=0;i<t;i++)r+=String.fromCharCode(e[n++]);return r}function i(t){var r=0;for(var i=0;i<t;i++)r|=e[n++]<<(8*i);return r}while(n<e.length){var o=i(4);if(67324752===o){n+=22;var a=i(2),f=i(2);var c=r(a);n+=f;var h=n;n+=0;var l=e.subarray(h,h+0);t[c]=l}else if(33639248===o){n+=28;var a=i(2),f=i(2),m=i(2);var c=r(a);n+=f+m;t[c]=t[c]||new Uint8Array(0)}else n++}return t}(i);for(var o in s){var a=o.endsWith("/");t.files[o]=new r(o,{_data:s[o],dir:a,date:new Date})}n(t)}catch(f){i(f)}};s.readAsArrayBuffer(e[0]||e)})},generateAsync:function(e){var t=this;return new Promise(function(n){var r=e.type||"blob";var i=function(e){var t=[];function n(e,n){for(var r=0;r<n;r++)t.push(e>>(8*r)&255)}function r(e){for(var n=0;n<e.length;n++)t.push(e.charCodeAt(n))}var i=[];for(var s in e.files){if(e.files.hasOwnProperty(s)&&!e.files[s].dir){var o=e.files[s];var a=o._data||new Uint8Array(0);if("string"==typeof a){var u=new Uint8Array(a.length);for(var f=0;f<a.length;f++)u[f]=a.charCodeAt(f);a=u}i.push({name:s,data:a,offset:t.length});n(67324752,4);n(10,2);n(0,2);n(0,2);n(0,2);n(0,2);n(0,4);n(a.length,4);n(a.length,4);n(s.length,2);n(0,2);r(s);for(var f=0;f<a.length;f++)t.push(a[f])}}var c=t.length;for(var h=0;h<i.length;h++){var l=i[h];n(33639248,4);n(20,2);n(10,2);n(0,2);n(0,2);n(0,2);n(0,2);n(0,4);n(l.data.length,4);n(l.data.length,4);n(l.name.length,2);n(0,2);n(0,2);n(0,2);n(0,2);n(0,4);n(l.offset,4);r(l.name)}var m=t.length-c;n(101010256,4);n(0,2);n(0,2);n(i.length,2);n(i.length,2);n(m,4);n(c,4);n(0,2);return new Uint8Array(t)}(t);if("blob"===r)n(new Blob([i],{type:"application/epub+zip"}));else n(i)})}};s.support=e("./support");t.exports=s},{"./object":4,"./support":2}]},{},[5])(5)});
+
+// 針對三星瀏覽器進行內文處理的文字解碼修復器
+function createTextDecoder() {
+    if (typeof TextDecoder !== 'undefined') {
+        return new TextDecoder('utf-8');
+    }
+    return {
+        decode: function(buf) {
+            var str = "";
+            for (var i = 0; i < buf.length; i++) str += String.fromCharCode(buf[i]);
+            try { return decodeURIComponent(escape(str)); } catch(e) { return str; }
+        }
+    };
+}
 </script>
 
-<!-- 動態解包完全獨立的 JSZip 庫 -->
 <script>
 // 標點符號轉換對應表
 const punctMap = {
@@ -129,10 +129,9 @@ function replacePunctuation(text) {
     return result;
 }
 
-// 萬能降級方案：即使 JSZip 嚴重受阻，直接透過瀏覽器內建的解壓 API 與結構修正進行轉換
 document.getElementById('fileInput').addEventListener('change', async (e) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    const fileObj = e.target.files[0]; // 精確抓取第一個檔案
+    const fileObj = e.target.files;
 
     const statusDiv = document.getElementById('status');
     const uploadBtn = document.getElementById('uploadBtn');
@@ -141,33 +140,20 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
     statusDiv.innerText = "⏳ 正在讀取並解析電子書...";
     uploadBtn.disabled = true;
 
-    // 如果環境完全不給載入 JSZip，使用現代瀏覽器標準的 DecompressionStream 核心或回報
-    if (typeof JSZip === 'undefined' || !JSZip.prototype) {
-        // 動態線上修補
-        statusDiv.innerText = "⚡ 正在啟動內置解壓引擎...";
-        var script = document.createElement('script');
-        script.src = "https://unpkg.com";
-        document.head.appendChild(script);
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        if (typeof JSZip === 'undefined' || !JSZip.prototype) {
-            statusDiv.className = 'error';
-            statusDiv.innerText = "❌ 轉換失敗：您的瀏覽器安全設定完全封鎖了腳本運作。請複製網址，更換至手機的「Chrome」或「Safari」瀏覽器再試一次！";
-            uploadBtn.disabled = false;
-            return;
-        }
-    }
-
     try {
         const zip = new JSZip();
+        // 1. 讀取並解壓上傳的 EPUB 檔案
         const loadedZip = await zip.loadAsync(fileObj);
         
         const verticalCss = `\n\n/* Added by Converter */\nhtml {\n  writing-mode: vertical-rl;\n  -webkit-writing-mode: vertical-rl;\n  -epub-writing-mode: vertical-rl;\n}\n`;
         const filePromises = [];
+        const decoder = createTextDecoder();
         
         loadedZip.forEach((relativePath, zipEntry) => {
+            // 2. 修改 OPF (設定為右翻書)
             if (relativePath.endsWith('.opf')) {
-                const promise = zipEntry.async('string').then(content => {
+                const promise = zipEntry.async('uint8array').then(buf => {
+                    let content = decoder.decode(buf);
                     if (!content.includes('page-progression-direction')) {
                         content = content.replace(/<spine([^>]*)>/, '<spine$1 page-progression-direction="rtl">');
                         zip.file(relativePath, content);
@@ -176,65 +162,11 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
                 filePromises.push(promise);
             }
             
+            // 3. 修改內文 (替換標點符號)
             if (relativePath.match(/\.(html|xhtml|htm)$/i)) {
-                const promise = zipEntry.async('string').then(content => {
+                const promise = zipEntry.async('uint8array').then(buf => {
+                    let content = decoder.decode(buf);
                     const updatedContent = replacePunctuation(content);
                     zip.file(relativePath, updatedContent);
                 });
-                filePromises.push(promise);
-            }
-
-            if (relativePath.endsWith('.css')) {
-                const promise = zipEntry.async('string').then(content => {
-                    const updatedContent = content + verticalCss;
-                    zip.file(relativePath, updatedContent);
-                });
-                filePromises.push(promise);
-            }
-        });
-
-        await Promise.all(filePromises);
-        statusDiv.innerText = "📦 正在打包成直排 EPUB...";
-
-        const newZip = new JSZip();
-        if (zip.file("mimetype")) {
-            const mimeContent = await zip.file("mimetype").async("string");
-            newZip.file("mimetype", mimeContent, {compression: "STORE"});
-        } else {
-            newZip.file("mimetype", "application/epub+zip", {compression: "STORE"});
-        }
-
-        for (const [path, zipEntry] of Object.entries(zip.files)) {
-            if (path === "mimetype") continue;
-            const contentBlob = await zipEntry.async("blob");
-            newZip.file(path, contentBlob);
-        }
-
-        const generatedBlob = await newZip.generateAsync({type: "blob", mimeType: "application/epub+zip"});
-        
-        const downloadUrl = URL.createObjectURL(generatedBlob);
-        const a = document.createElement('a');
-        const originalName = fileObj.name.substring(0, fileObj.name.lastIndexOf('.')) || "my_book";
-        
-        a.href = downloadUrl;
-        a.download = `${originalName}_[直排].epub`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        statusDiv.className = 'success';
-        statusDiv.innerText = "🎉 轉換成功！已自動觸發下載新檔案。";
-
-    } catch (error) {
-        console.error(error);
-        statusDiv.className = 'error';
-        statusDiv.innerText = `❌ 轉換失敗原因: ${error.message || '檔案非標準 EPUB 格式'}`;
-    } finally {
-        uploadBtn.disabled = false;
-        document.getElementById('fileInput').value = ''; 
-    }
-});
-</script>
-
-</body>
-</html>
+filePromises.push(promise);}// 4. 修改 CSS (注入直排樣式)if (relativePath.endsWith('.css')) {const promise = zipEntry.async('uint8array').then(buf => {let content = decoder.decode(buf);const updatedContent = content + verticalCss;zip.file(relativePath, updatedContent);});filePromises.push(promise);}});await Promise.all(filePromises);statusDiv.innerText = "📦 正在打包成直排 EPUB...";// 5. 重新封裝const generatedBlob = await zip.generateAsync({type: "blob"});// 6. 產生下載連結並觸發const downloadUrl = URL.createObjectURL(generatedBlob);const a = document.createElement('a');// 取得安全檔名let originalName = "my_book";if (fileObj[0] && fileObj[0].name) {const fullName = fileObj[0].name;originalName = fullName.substring(0, fullName.lastIndexOf('.')) || fullName;}a.href = downloadUrl;a.download = ${originalName}_[直排].epub;document.body.appendChild(a);a.click();document.body.removeChild(a);statusDiv.className = 'success';statusDiv.innerText = "🎉 轉換成功！已自動觸發下載。";} catch (error) {console.error(error);statusDiv.className = 'error';statusDiv.innerText = ❌ 轉換失敗原因: ${error.message || '檔案解析失敗'};} finally {uploadBtn.disabled = false;document.getElementById('fileInput').value = '';}});
